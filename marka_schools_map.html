@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Marka District BTEC Schools | مدارس لواء ماركا المهنية BTEC</title>
+    <meta property="og:title" content="Marka District BTEC Schools | مدارس لواء ماركا المهنية BTEC">
+    <meta property="og:description" content="Interactive map of 18 public vocational (BTEC) schools in Marka District, Amman, Jordan.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="marka_btec_schools_share_banner.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1424">
+    <meta property="og:image:height" content="752">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Marka District BTEC Schools | مدارس لواء ماركا المهنية BTEC">
+    <meta name="twitter:description" content="Interactive map of 18 public vocational (BTEC) schools in Marka District, Amman, Jordan.">
+    <meta name="twitter:image" content="marka_btec_schools_share_banner.png">
+    <link rel="icon" type="image/png" href="marka_btec_schools_share_banner.png">
+    <link rel="apple-touch-icon" href="marka_btec_schools_share_banner.png">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+        #map { height: 100%; width: 100%; z-index: 1; background: #e2e8f0; }
+        .custom-popup .leaflet-popup-content-wrapper { border-radius: 0.75rem; padding: 0.4rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2); }
+        .pulse-beacon {
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.85; }
+            50% { transform: scale(1.45); opacity: 0.2; }
+            100% { transform: scale(0.95); opacity: 0.85; }
+        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased flex flex-col h-screen">
+
+    <!-- Top Header -->
+    <header class="bg-[#0f172a] text-white shadow-md z-30 flex items-center justify-between px-4 h-14 shrink-0 border-b-2 border-orange-500">
+        <div class="flex items-center space-x-3 rtl:space-x-reverse">
+            <img src="marka_btec_schools_share_banner.png" alt="Marka BTEC Banner" class="h-9 w-16 object-cover rounded-md border border-orange-400/60 shadow-sm hidden sm:block">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-orange-500 to-amber-400 flex items-center justify-center shadow-inner sm:hidden">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+            </div>
+            <div>
+                <h1 id="app-title" class="text-base sm:text-lg font-bold tracking-tight leading-tight">Marka District BTEC Schools</h1>
+                <p id="app-subtitle" class="text-[11px] text-orange-300 font-medium">مدارس لواء ماركا المهنية BTEC</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-2 rtl:space-x-reverse">
+            <!-- Map Tile Style Switcher (Fallback if needed) -->
+            <select id="basemap-select" onchange="switchBasemap(this.value)" class="bg-slate-800 text-white text-xs rounded-lg px-2 py-1.5 border border-slate-600 focus:outline-none cursor-pointer">
+                <option value="streets">🗺️ Streets</option>
+                <option value="satellite">🛰️ Satellite</option>
+                <option value="topo">⛰️ Topographic</option>
+            </select>
+
+            <!-- Language Switcher -->
+            <button id="lang-toggle" onclick="toggleLanguage()" class="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold rounded-lg shadow-sm transition">
+                <span id="lang-label">العربية (AR)</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="flex flex-1 relative overflow-hidden">
+        
+        <!-- Map Section -->
+        <main class="flex-1 relative flex flex-col h-full">
+            <div id="map"></div>
+
+            <!-- Floating Map Controls (Top-Left) -->
+            <div class="absolute top-3 left-3 z-[900] flex flex-col gap-2">
+                <button onclick="resetMapView()" class="px-3 py-2 bg-white hover:bg-slate-50 text-slate-800 rounded-xl shadow-lg border border-slate-200 transition font-semibold text-xs flex items-center gap-1.5">
+                    <span class="text-orange-600">🏛️</span>
+                    <span id="btn-reset-view">Marka Center</span>
+                </button>
+                <button onclick="requestUserLocation()" class="px-3 py-2 bg-[#0f172a] hover:bg-slate-800 text-white rounded-xl shadow-lg border border-orange-500 transition font-semibold text-xs flex items-center gap-1.5">
+                    <span>📍</span>
+                    <span id="btn-my-loc">My Location</span>
+                </button>
+            </div>
+
+            <!-- Bottom Color Keys Bar (Left of Mobile Schools List Button) -->
+            <div class="absolute bottom-7 left-2 right-36 md:right-3 z-[900] pointer-events-none flex justify-start">
+                <div class="pointer-events-auto bg-white/95 backdrop-blur-sm border border-slate-200 shadow-lg rounded-xl px-2.5 py-1.5 flex items-center gap-2.5 overflow-x-auto max-w-full text-[11px] font-medium text-slate-700">
+                    <div class="flex items-center gap-1 shrink-0">
+                        <span class="w-2.5 h-2.5 rounded-full bg-sky-500 ring-2 ring-amber-400"></span>
+                        <span id="key-my-loc">My Place</span>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <span class="w-2.5 h-2.5 rounded-full bg-rose-600"></span>
+                        <span id="key-girls">Girls (BTEC)</span>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <span class="w-2.5 h-2.5 rounded-full bg-teal-600"></span>
+                        <span id="key-boys">Boys (BTEC)</span>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <span class="w-4 h-0.5 border-t-2 border-dashed border-blue-600"></span>
+                        <span id="key-route">Nearest</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Schools List Toggle Button (Bottom-Right Corner: bottom-0 right-1) -->
+            <button id="mobile-list-btn" onclick="toggleMobileSidebar()" class="md:hidden fixed bottom-0 right-1 z-[1050] px-4 py-2.5 bg-[#0f172a] hover:bg-slate-800 text-white rounded-t-xl shadow-2xl flex items-center gap-2 text-xs font-bold border-t-2 border-x border-orange-500">
+                <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <span id="mobile-toggle-text">Schools List</span>
+            </button>
+
+            <!-- Single-Line Bottom Copyright Footer -->
+            <footer class="bg-[#0f172a] text-white px-3 py-1 flex items-center justify-between text-[11px] shrink-0 z-20 border-t border-slate-700">
+                <span class="font-semibold text-orange-300 tracking-wide truncate">© Eng. AMNEH ALNATOUR</span>
+                <span class="text-slate-300 hidden sm:inline truncate" id="footer-note">Marka District Vocational Schools (18 Public BTEC Schools)</span>
+            </footer>
+        </main>
+
+        <!-- Right-Hand Schools List Sidebar (Desktop Fixed Right, Mobile Slide-Over Drawer) -->
+        <aside id="sidebar" class="fixed md:static inset-y-0 right-0 z-[1100] w-80 lg:w-96 bg-white border-l border-slate-200 shadow-2xl md:shadow-none flex flex-col transform translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out h-full">
+            
+            <!-- Programmed Project Share Banner Header inside Sidebar -->
+            <div class="relative shrink-0 bg-[#0f172a] border-b-2 border-orange-500">
+                <img src="marka_btec_schools_share_banner.png" alt="مدارس لواء ماركا المهنية BTEC - Marka District BTEC Schools" class="w-full h-28 object-cover object-center">
+                <button onclick="toggleMobileSidebar()" aria-label="Close Schools List" class="md:hidden absolute top-2 right-2 bg-slate-900/85 hover:bg-orange-600 text-white rounded-full p-1.5 shadow-lg border border-white/20 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Sidebar Directory Title & Nearest School Info -->
+            <div class="px-3.5 py-2.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
+                <div>
+                    <h2 id="sidebar-heading" class="font-bold text-slate-800 text-sm">Vocational Schools Directory</h2>
+                    <p id="nearest-banner-text" class="text-[11px] text-indigo-700 font-semibold mt-0.5">📍 Nearest: Calculating...</p>
+                </div>
+                <span id="visible-count-badge" class="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs font-bold rounded-full">18</span>
+            </div>
+
+            <!-- Search & Colored Type Filter Buttons -->
+            <div class="p-3 border-b border-slate-100 space-y-2.5 bg-white shrink-0">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </span>
+                    <input type="text" id="school-search" oninput="handleSearch(this.value)" placeholder="Search school or BTEC major..." class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition">
+                </div>
+
+                <div class="flex gap-1.5">
+                    <button onclick="setFilter('ALL')" id="filter-all" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-[#0f172a] text-white shadow-sm transition">All (18)</button>
+                    <button onclick="setFilter('GIRLS')" id="filter-girls" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">Girls (8)</button>
+                    <button onclick="setFilter('BOYS')" id="filter-boys" class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 transition">Boys (10)</button>
+                </div>
+            </div>
+
+            <!-- Scrollable Schools List Cards -->
+            <div id="schools-list-container" class="flex-1 overflow-y-auto p-3 space-y-2.5 bg-slate-50/50">
+                <!-- Populated by renderSchools() -->
+            </div>
+
+            <!-- Sidebar Bottom Export & Single-Line Copyright -->
+            <div class="px-3 py-2 border-t border-slate-200 bg-white flex items-center justify-between text-[11px] shrink-0">
+                <span class="font-bold text-[#0f172a]">© Eng. AMNEH ALNATOUR</span>
+                <button onclick="exportDataJSON()" class="text-orange-600 font-bold hover:underline flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    <span id="export-btn-text">JSON</span>
+                </button>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        // 18 Official Public Vocational / BTEC Schools in Marka District (Amman, Jordan)
+        const schools = [
+            {
+                id: 1,
+                nameAr: "النزهة المهنية للبنات",
+                nameEn: "Al-Nuzha Vocational Secondary School for Girls",
+                gender: "GIRLS",
+                lat: 31.9685,
+                lng: 35.9450,
+                neighborhood: "النزهة / ماركا",
+                btec: ["الاعمال", "تكنولوجيا المعلومات", "الزراعة", "الفن والتصميم", "الشعر والتجميل", "الضيافة", "السفر والسياحة"]
+            },
+            {
+                id: 2,
+                nameAr: "اليوبيل الذهبي ث بنات",
+                nameEn: "Golden Jubilee Secondary School for Girls",
+                gender: "GIRLS",
+                lat: 31.9720,
+                lng: 35.9520,
+                neighborhood: "ماركا الشمالية",
+                btec: ["تكنولوجيا المعلومات", "الاعمال"]
+            },
+            {
+                id: 3,
+                nameAr: "لميس بنت عمرو ث بنات",
+                nameEn: "Lamees Bint Amr Secondary School for Girls",
+                gender: "GIRLS",
+                lat: 31.9650,
+                lng: 35.9610,
+                neighborhood: "ماركا الجنوبية",
+                btec: ["الهندسة / كهرباء", "الفن والتصميم"]
+            },
+            {
+                id: 4,
+                nameAr: "القدس ث بنات",
+                nameEn: "Al-Quds Secondary School for Girls",
+                gender: "GIRLS",
+                lat: 31.9780,
+                lng: 35.9580,
+                neighborhood: "ماركا الشمالية",
+                btec: ["الرعاية الصحية"]
+            },
+            {
+                id: 5,
+                nameAr: "القادسية ث بنات",
+                nameEn: "Al-Qadisiya Secondary School for Girls",
+                gender: "GIRLS",
+                lat: 31.9610,
+                lng: 35.9480,
+                neighborhood: "النزهة",
+                btec: ["الشعر والتجميل"]
+            },
+            {
+                id: 6,
+                nameAr: "النصر ث بنات",
+                nameEn: "Al-Nasr Secondary School for Girls",
+                gender: "GIRLS",
+                lat: 31.9540,
+                lng: 35.9680,
+                neighborhood: "منطقة النصر",
+                btec: ["الشعر والتجميل", "تكنولوجيا المعلومات", "الاعمال", "الفن والتصميم"]
+            },
+            {
+                id: 7,
+                nameAr: "الزبيدية ث بنات",
+                nameEn: "Al-Zubaidia Secondary School for Girls",
+                gender: "GIRLS",
+                lat: 31.9820,
+                lng: 35.9500,
+                neighborhood: "ماركا الشمالية",
+                btec: ["الشعر والتجميل", "الطفولة المبكرة", "الفن والتصميم"]
+            },
+            {
+                id: 8,
+                nameAr: "احمد طوقان المهنية للبنين",
+                nameEn: "Ahmed Toukan Vocational Secondary School for Boys",
+                gender: "BOYS",
+                lat: 31.9750,
+                lng: 35.9420,
+                neighborhood: "ماركا الشمالية",
+                btec: ["الهندسة (الكهرباء / الميكانيك / تكنولوجيا السيارات)"]
+            },
+            {
+                id: 9,
+                nameAr: "قتيبة بن مسلم المهنية للبنين",
+                nameEn: "Qutaiba Bin Muslim Vocational Secondary School for Boys",
+                gender: "BOYS",
+                lat: 31.9690,
+                lng: 35.9600,
+                neighborhood: "ماركا الجنوبية",
+                btec: ["الهندسة (الكهرباء / تكنولوجيا السيارات)", "الضيافة"]
+            },
+            {
+                id: 10,
+                nameAr: "النصر المهنية بنين",
+                nameEn: "Al-Nasr Vocational Secondary School for Boys",
+                gender: "BOYS",
+                lat: 31.9520,
+                lng: 35.9710,
+                neighborhood: "منطقة النصر",
+                btec: ["الهندسة (الكهرباء / الميكانيك / تكنولوجيا السيارات)", "الضيافة", "السياحة والسفر"]
+            },
+            {
+                id: 11,
+                nameAr: "ابو بكر الرازي ث بنين",
+                nameEn: "Abu Bakr Al-Razi Secondary School for Boys",
+                gender: "BOYS",
+                lat: 31.9810,
+                lng: 35.9640,
+                neighborhood: "ماركا الشمالية",
+                btec: ["الهندسة (الكهرباء / الميكانيك / تكنولوجيا السيارات)", "البناء والانشاءات"]
+            },
+            {
+                id: 12,
+                nameAr: "الامام مالك ث بنين",
+                nameEn: "Imam Malik Secondary School for Boys",
+                gender: "BOYS",
+                lat: 31.9630,
+                lng: 35.9540,
+                neighborhood: "ماركا الجنوبية",
+                btec: ["الرعاية الصحية", "تكنولوجيا المعلومات", "الاعمال", "الضيافة", "السياحة والسفر"]
+            },
+            {
+                id: 13,
+                nameAr: "الحسن البصري ث بنين",
+                nameEn: "Al-Hasan Al-Basri Secondary School for Boys",
+                gender: "BOYS",
+                lat: 31.9670,
+                lng: 35.9720,
+                neighborhood: "ماركا الجنوبية",
+                btec: ["الرياضة"]
+            },
+            {
+                id: 14,
+                nameAr: "ابو عبيدة الاساسية للبنين",
+                nameEn: "Abu Ubaida Basic School for Boys",
+                gender: "BOYS",
+                lat: 31.9740,
+                lng: 35.9490,
+                neighborhood: "ماركا الشمالية",
+                btec: ["الرياضات الالكترونية", "الوسائط الابداعية"]
+            },
+            {
+                id: 15,
+                nameAr: "الشهيد منصور كريشان ث بنين",
+                nameEn: "Martyr Mansour Krishan Secondary School for Boys",
+                gender: "BOYS",
+                lat: 31.9590,
+                lng: 35.9650,
+                neighborhood: "النصر",
+                btec: ["الاعمال", "تكنولوجيا المعلومات"]
+            },
+            {
+                id: 16,
+                nameAr: "عبد الملك بن مروان ث بنين",
+                nameEn: "Abdul Malik Bin Marwan Secondary School for Boys",
+                gender: "BOYS",
+                lat: 31.9800,
+                lng: 35.9450,
+                neighborhood: "ماركا الشمالية",
+                btec: ["الاعمال", "تكنولوجيا المعلومات"]
+            },
+            {
+                id: 17,
+                nameAr: "عباس العقاد ث بنين",
+                nameEn: "Abbas Al-Aqqad Secondary School for Boys",
+                gender: "BOYS",
+                lat: 31.9620,
+                lng: 35.9410,
+                neighborhood: "النزهة",
+                btec: ["الفن والتصميم"]
+            },
+            {
+                id: 18,
+                nameAr: "الحزام المهنية المختلطة",
+                nameEn: "Al-Hizam Vocational Mixed School",
+                gender: "GIRLS",
+                lat: 31.9570,
+                lng: 35.9550,
+                neighborhood: "منطقة الحزام",
+                btec: ["تكنولوجيا المعلومات", "الضيافة"]
+            }
+        ];
+
+        let currentLang = 'en';
+        let currentFilter = 'ALL';
+        let searchQuery = '';
+        let markersMap = {};
+        let userLatLng = { lat: 31.9680, lng: 35.9550 };
+        let userMarker = null;
+        let nearestLine = null;
+
+        const i18n = {
+            en: {
+                appTitle: "Marka District BTEC Schools",
+                appSubtitle: "مدارس لواء ماركا المهنية BTEC",
+                langLabel: "العربية (AR)",
+                sidebarHeading: "Vocational Schools Directory",
+                searchPlaceholder: "Search school or BTEC major...",
+                filterAll: "All (18)",
+                filterGirls: "Girls (8)",
+                filterBoys: "Boys (10)",
+                resetViewBtn: "Marka Center",
+                myLocBtn: "My Location",
+                mobileToggleBtn: "Schools List",
+                keyMyLoc: "My Place",
+                keyGirls: "Girls (BTEC)",
+                keyBoys: "Boys (BTEC)",
+                keyRoute: "Nearest",
+                neighborhood: "Area",
+                gender: "Type",
+                btecTracks: "BTEC Tracks",
+                boys: "Boys",
+                girls: "Girls",
+                nearestPrefix: "📍 Nearest:",
+                zoomBtn: "Center on Map"
+            },
+            ar: {
+                appTitle: "مدارس لواء ماركا المهنية BTEC",
+                appSubtitle: "مديرية التربية والتعليم للواء ماركا",
+                langLabel: "English (EN)",
+                sidebarHeading: "دليل المدارس المهنية",
+                searchPlaceholder: "ابحث عن مدرسة أو تخصص BTEC...",
+                filterAll: "الكل (18)",
+                filterGirls: "بنات (8)",
+                filterBoys: "بنين (10)",
+                resetViewBtn: "مركز ماركا",
+                myLocBtn: "موقعي",
+                mobileToggleBtn: "قائمة المدارس",
+                keyMyLoc: "موقعي",
+                keyGirls: "بنات (BTEC)",
+                keyBoys: "بنين (BTEC)",
+                keyRoute: "الأقرب",
+                neighborhood: "المنطقة",
+                gender: "التصنيف",
+                btecTracks: "تخصصات BTEC",
+                boys: "بنين",
+                girls: "بنات",
+                nearestPrefix: "📍 أقرب مدرسة:",
+                zoomBtn: "تكبير الموقع"
+            }
+        };
+
+        // Initialize Map
+        const map = L.map('map', { zoomControl: false }).setView([31.9680, 35.9550], 13);
+        L.control.zoom({ position: 'topleft' }).addTo(map);
+
+        // Key-free, Referer-safe Tile Providers (Esri ArcGIS REST services work both locally file:// and hosted!)
+        const tileProviders = {
+            streets: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: '&copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
+            }),
+            satellite: L.layerGroup([
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19,
+                    attribution: '&copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
+                }),
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19
+                })
+            ]),
+            topo: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19,
+                attribution: '&copy; Esri &mdash; Esri, HERE, Garmin, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), (c) OpenStreetMap contributors'
+            })
+        };
+
+        let activeTileLayer = tileProviders.streets.addTo(map);
+
+        function switchBasemap(key) {
+            if (activeTileLayer) {
+                map.removeLayer(activeTileLayer);
+            }
+            activeTileLayer = tileProviders[key] || tileProviders.streets;
+            activeTileLayer.addTo(map);
+        }
+
+        // Marka District Boundary Polygon
+        const markaPolygon = L.polygon([
+            [31.990, 35.935],
+            [31.990, 35.975],
+            [31.945, 35.985],
+            [31.940, 35.935]
+        ], {
+            color: '#f97316',
+            weight: 2,
+            dashArray: '6, 6',
+            fillColor: '#f97316',
+            fillOpacity: 0.04
+        }).addTo(map);
+        markaPolygon.bindTooltip("لواء ماركا - Amman", { sticky: true });
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'ar' : 'en';
+            document.documentElement.setAttribute('lang', currentLang);
+            document.documentElement.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
+            updateUIStrings();
+            renderSchools();
+        }
+
+        function updateUIStrings() {
+            const t = i18n[currentLang];
+            document.getElementById('app-title').innerText = t.appTitle;
+            document.getElementById('app-subtitle').innerText = t.appSubtitle;
+            document.getElementById('lang-label').innerText = t.langLabel;
+            document.getElementById('sidebar-heading').innerText = t.sidebarHeading;
+            document.getElementById('school-search').placeholder = t.searchPlaceholder;
+            document.getElementById('filter-all').innerText = t.filterAll;
+            document.getElementById('filter-girls').innerText = t.filterGirls;
+            document.getElementById('filter-boys').innerText = t.filterBoys;
+            document.getElementById('btn-reset-view').innerText = t.resetViewBtn;
+            document.getElementById('btn-my-loc').innerText = t.myLocBtn;
+            document.getElementById('mobile-toggle-text').innerText = t.mobileToggleBtn;
+            document.getElementById('key-my-loc').innerText = t.keyMyLoc;
+            document.getElementById('key-girls').innerText = t.keyGirls;
+            document.getElementById('key-boys').innerText = t.keyBoys;
+            document.getElementById('key-route').innerText = t.keyRoute;
+        }
+
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const btn = document.getElementById('mobile-list-btn');
+            const isHidden = sidebar.classList.contains('translate-x-full');
+            if (isHidden) {
+                sidebar.classList.remove('translate-x-full');
+                btn.classList.add('hidden');
+            } else {
+                sidebar.classList.add('translate-x-full');
+                btn.classList.remove('hidden');
+            }
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.getElementById('filter-all').className = `flex-1 py-1.5 text-xs font-bold rounded-lg transition ${filter === 'ALL' ? 'bg-[#0f172a] text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`;
+            document.getElementById('filter-girls').className = `flex-1 py-1.5 text-xs font-bold rounded-lg transition ${filter === 'GIRLS' ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'}`;
+            document.getElementById('filter-boys').className = `flex-1 py-1.5 text-xs font-bold rounded-lg transition ${filter === 'BOYS' ? 'bg-teal-600 text-white shadow-sm' : 'bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100'}`;
+            renderSchools();
+        }
+
+        function handleSearch(val) {
+            searchQuery = val.toLowerCase().trim();
+            renderSchools();
+        }
+
+        function getFilteredSchools() {
+            return schools.filter(s => {
+                const matchesFilter = currentFilter === 'ALL' || s.gender === currentFilter;
+                const nameMatch = s.nameAr.toLowerCase().includes(searchQuery) || s.nameEn.toLowerCase().includes(searchQuery) || s.neighborhood.toLowerCase().includes(searchQuery);
+                const btecMatch = s.btec.some(b => b.toLowerCase().includes(searchQuery));
+                return matchesFilter && (nameMatch || btecMatch);
+            });
+        }
+
+        function renderSchools() {
+            const container = document.getElementById('schools-list-container');
+            container.innerHTML = '';
+
+            Object.values(markersMap).forEach(m => map.removeLayer(m));
+            markersMap = {};
+
+            const filtered = getFilteredSchools();
+            document.getElementById('visible-count-badge').innerText = filtered.length;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">No schools found matching your search.</div>`;
+                return;
+            }
+
+            const t = i18n[currentLang];
+
+            filtered.forEach(school => {
+                const isGirl = school.gender === 'GIRLS';
+                const badgeClass = isGirl
+                    ? 'bg-rose-100 text-rose-800 border-rose-300'
+                    : 'bg-teal-100 text-teal-800 border-teal-300';
+                const cardBorderClass = isGirl
+                    ? 'border-l-4 border-l-rose-600'
+                    : 'border-l-4 border-l-teal-600';
+                const pinColor = isGirl ? '#e11d48' : '#0d9488';
+                const schoolName = currentLang === 'ar' ? school.nameAr : school.nameEn;
+                const secondaryName = currentLang === 'ar' ? school.nameEn : school.nameAr;
+                const genderLabel = isGirl ? t.girls : t.boys;
+
+                // Sidebar Card with Colored School Type Badge & Left Accent
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl border border-slate-200 ${cardBorderClass} bg-white hover:shadow-md transition cursor-pointer space-y-1.5`;
+                card.onclick = () => focusOnSchool(school.id);
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <h3 class="font-bold text-slate-900 text-xs leading-snug">${schoolName}</h3>
+                            <p class="text-[11px] text-slate-500 mt-0.5">${secondaryName}</p>
+                        </div>
+                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-md border ${badgeClass} shrink-0">${genderLabel}</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 font-medium">📍 ${school.neighborhood}</p>
+                    <div class="flex flex-wrap gap-1 pt-1">
+                        ${school.btec.map(b => `<span class="bg-slate-100 text-slate-700 border border-slate-200/80 text-[10px] font-medium px-1.5 py-0.5 rounded">${b}</span>`).join('')}
+                    </div>
+                `;
+                container.appendChild(card);
+
+                // Map Pin
+                const customIcon = L.divIcon({
+                    className: 'custom-school-pin',
+                    html: `<div style="background-color: ${pinColor}; width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; color: white; font-size: 13px;">🏫</div>`,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 15],
+                    popupAnchor: [0, -15]
+                });
+
+                const marker = L.marker([school.lat, school.lng], { icon: customIcon }).addTo(map);
+                const popupContent = `
+                    <div class="p-1.5 space-y-1.5 min-w-[220px]">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="px-2 py-0.5 text-[10px] font-bold rounded border ${badgeClass}">${genderLabel}</span>
+                            <span class="text-[10px] text-slate-400">#${school.id}</span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-sm leading-snug">${school.nameAr}</h3>
+                        <p class="text-xs text-slate-600 font-medium">${school.nameEn}</p>
+                        <div class="text-xs text-slate-700 pt-1 border-t border-slate-100 space-y-1">
+                            <p><strong>${t.neighborhood}:</strong> ${school.neighborhood}</p>
+                            <div>
+                                <strong class="block mb-0.5">${t.btecTracks}:</strong>
+                                <div class="flex flex-wrap gap-1">
+                                    ${school.btec.map(b => `<span class="bg-slate-100 text-slate-800 text-[10px] px-1.5 py-0.5 rounded border border-slate-200">${b}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pt-1.5 flex justify-end">
+                            <button onclick="zoomToSchool(${school.lat}, ${school.lng})" class="px-2.5 py-1 bg-[#0f172a] hover:bg-orange-600 text-white text-[11px] font-semibold rounded shadow transition">${t.zoomBtn}</button>
+                        </div>
+                    </div>
+                `;
+                marker.bindPopup(popupContent, { className: 'custom-popup' });
+                markersMap[school.id] = marker;
+            });
+
+            updateNearestSchool();
+        }
+
+        function focusOnSchool(id) {
+            const school = schools.find(s => s.id === id);
+            if (!school) return;
+            map.setView([school.lat, school.lng], 16, { animate: true });
+            if (markersMap[id]) {
+                markersMap[id].openPopup();
+            }
+            if (window.innerWidth < 768) {
+                toggleMobileSidebar();
+            }
+        }
+
+        function zoomToSchool(lat, lng) {
+            map.setView([lat, lng], 17, { animate: true });
+        }
+
+        function resetMapView() {
+            map.setView([31.9680, 35.9550], 13, { animate: true });
+        }
+
+        function initUserLocationMarker() {
+            const bigSignHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; position: relative;">
+                    <div class="pulse-beacon" style="position: absolute; width: 56px; height: 56px; background: rgba(56, 189, 248, 0.45); border-radius: 50%; top: -8px; left: 52px; z-index: 0;"></div>
+                    <div style="background: linear-gradient(135deg, #0284c7, #0369a1); color: white; padding: 5px 11px; border-radius: 20px; font-weight: bold; font-size: 11px; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.35); border: 2px solid #fbbf24; z-index: 2; display: flex; align-items: center; gap: 4px;">
+                        <span>📍</span> <span>موقعي الحالي / MY LOCATION</span>
+                    </div>
+                    <div style="width: 3px; height: 14px; background: #0369a1; z-index: 1;"></div>
+                    <div style="width: 20px; height: 20px; background: #38bdf8; border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 4px 8px rgba(0,0,0,0.35); z-index: 2;"></div>
+                </div>
+            `;
+            const customSignIcon = L.divIcon({
+                className: 'big-user-sign',
+                html: bigSignHTML,
+                iconSize: [160, 68],
+                iconAnchor: [80, 62]
+            });
+
+            userMarker = L.marker([userLatLng.lat, userLatLng.lng], { icon: customSignIcon, draggable: true }).addTo(map);
+            
+            userMarker.on('dragend', function(e) {
+                const pos = e.target.getLatLng();
+                userLatLng = { lat: pos.lat, lng: pos.lng };
+                updateNearestSchool();
+            });
+
+            map.on('click', function(e) {
+                userLatLng = { lat: e.latlng.lat, lng: e.latlng.lng };
+                userMarker.setLatLng([userLatLng.lat, userLatLng.lng]);
+                updateNearestSchool();
+            });
+
+            updateNearestSchool();
+        }
+
+        function requestUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLatLng = { lat: position.coords.latitude, lng: position.coords.longitude };
+                        userMarker.setLatLng([userLatLng.lat, userLatLng.lng]);
+                        map.setView([userLatLng.lat, userLatLng.lng], 15, { animate: true });
+                        updateNearestSchool();
+                    },
+                    () => {
+                        alert("GPS unavailable. Click anywhere on the map or drag the 'MY LOCATION' sign to set your spot.");
+                    }
+                );
+            }
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        }
+
+        function updateNearestSchool() {
+            const pool = getFilteredSchools();
+            const listToSearch = pool.length > 0 ? pool : schools;
+            let nearest = null;
+            let minDistance = Infinity;
+
+            listToSearch.forEach(school => {
+                const dist = calculateDistance(userLatLng.lat, userLatLng.lng, school.lat, school.lng);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearest = school;
+                }
+            });
+
+            if (!nearest) return;
+
+            if (nearestLine) {
+                map.removeLayer(nearestLine);
+            }
+
+            nearestLine = L.polyline([
+                [userLatLng.lat, userLatLng.lng],
+                [nearest.lat, nearest.lng]
+            ], {
+                color: '#2563eb',
+                weight: 3.5,
+                dashArray: '8, 8',
+                opacity: 0.9
+            }).addTo(map);
+
+            const distText = minDistance < 1 ? `${Math.round(minDistance * 1000)} m` : `${minDistance.toFixed(2)} km`;
+            const schoolName = currentLang === 'ar' ? nearest.nameAr : nearest.nameEn;
+            const t = i18n[currentLang];
+
+            nearestLine.bindTooltip(`${t.nearestPrefix} ${schoolName} (${distText})`, { permanent: false, direction: 'center' });
+            document.getElementById('nearest-banner-text').innerText = `${t.nearestPrefix} ${schoolName} (${distText})`;
+        }
+
+        function exportDataJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(schools, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "marka_district_btec_schools.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        renderSchools();
+        initUserLocationMarker();
+    </script>
+</body>
+</html>
